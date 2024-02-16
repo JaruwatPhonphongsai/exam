@@ -1,9 +1,6 @@
 package org.example.service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import org.example.model.BookingDto;
 import org.example.model.TableDto;
 import static org.example.extensions.ValidateCommon.isValidDate;
@@ -32,20 +29,48 @@ public class BookingService {
     private void setBookingInformation(String selectDate, Map<String, String> processInfo, Map<String, List<TableDto>> tableInformation) {
         int maxTables = 0;
         List<TableDto> tablesForDate = tableInformation.get(selectDate);
-        if (tablesForDate != null) {
-            for (TableDto table1 : tablesForDate) {
-                int totalTablesForOverlap = table1.getTotalTable();
-                for (TableDto table2 : tablesForDate) {
-                    if (!table1.equals(table2) && isOverlapping(table1, table2)) {
-                        totalTablesForOverlap += table2.getTotalTable();
-                    }
+
+
+        Map<String, List<TableDto>> groupsByDate = new HashMap<>();
+
+        for (TableDto tableDto : tablesForDate) {
+            groupsByDate.computeIfAbsent(tableDto.getDate(), k -> new ArrayList<>()).add(tableDto);
+        }
+
+        List<List<TableDto>> finalGroups = new ArrayList<>();
+
+        for (List<TableDto> tableDtoByDate : groupsByDate.values()) {
+            tableDtoByDate.sort(Comparator.comparing(TableDto::getTimeToEnter));
+
+            List<List<TableDto>> groups = new ArrayList<>();
+            List<TableDto> currentGroup = new ArrayList<>();
+            TableDto previousTableDto = null;
+
+            for (TableDto tableDto : tableDtoByDate) {
+                if (previousTableDto != null && !isOverlapping(previousTableDto, tableDto)) {
+                    groups.add(currentGroup);
+                    currentGroup = new ArrayList<>();
                 }
-                if (totalTablesForOverlap > maxTables) {
-                    maxTables = totalTablesForOverlap;
+                currentGroup.add(tableDto);
+                previousTableDto = tableDto;
+            }
+            groups.add(currentGroup);
+
+            finalGroups.addAll(groups);
+            int total;
+            int countTable;
+            for (List<TableDto> group : finalGroups) {
+                total = 0;
+                for (TableDto reservation : group) {
+                    countTable = (int) Math.ceil(reservation.getNumberOfCustomers() / 4.0);
+                    total += countTable;
+                }
+                if (total > maxTables) {
+                    maxTables = total;
                 }
             }
+            processInfo.put(selectDate, String.valueOf(maxTables));
         }
-        processInfo.put(selectDate, String.valueOf(maxTables));
     }
 
     private boolean isOverlapping(TableDto table1, TableDto table2) {
