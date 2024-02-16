@@ -3,15 +3,17 @@ package org.example;
 import org.example.model.BookingDto;
 import org.example.service.BookingService;
 
-import java.io.*;
-import java.util.ArrayList;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
-        String selectDate = args.length > 0 ? args[0] : "01/01/2024";
+        String selectDate = args.length > 0 ? args[0] : "03/01/2024";
         BookingService bookingService = new BookingService();
         List<BookingDto> bookingDtoList = readBookingData("booking-information.csv");
         System.out.println(bookingService.booking(selectDate, bookingDtoList));
