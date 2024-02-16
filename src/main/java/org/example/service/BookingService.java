@@ -1,15 +1,12 @@
 package org.example.service;
 
-import org.example.model.BookingDto;
-import org.example.model.TableDto;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.example.extensions.ConvertCommon.stringToDateTime;
-import static org.example.extensions.ValidateCommon.*;
+import org.example.model.BookingDto;
+import org.example.model.TableDto;
+import static org.example.extensions.ValidateCommon.isValidDate;
 
 public class BookingService {
 
@@ -26,34 +23,10 @@ public class BookingService {
         Map<String, List<TableDto>> tableInformation = new HashMap<>();
         Map<String, String> processInfo = new HashMap<>();
         for (BookingDto bookingDto : bookingDtoList) {
-            if (isInvalidBooking(bookingDto)) {
-                processInfo.put("invalid", "true");
-                return processInfo;
-            }
             calculateTableCount(tableInformation, bookingDto);
         }
         setBookingInformation(selectDate, processInfo, tableInformation);
-        processInfo.put("invalid", "false");
         return processInfo;
-    }
-
-    private boolean isInvalidBooking(BookingDto bookingDto) {
-        return isEmptyString(bookingDto.getName())
-                || isEmptyString(bookingDto.getContactPhoneNumber())
-                || !isValidPhoneNumber(bookingDto.getContactPhoneNumber())
-                || isEmptyString(bookingDto.getDate())
-                || !isValidDate(bookingDto.getDate())
-                || isEmptyString(bookingDto.getTimeToEnter())
-                || !isValidTime(bookingDto.getTimeToEnter())
-                || isEmptyString(bookingDto.getTimeToGoOut())
-                || !isValidTime(bookingDto.getTimeToGoOut())
-                || isInvalidDateTimeOrder(bookingDto.getDate(), bookingDto.getTimeToEnter(), bookingDto.getTimeToGoOut())
-                || isEmptyInteger(bookingDto.getNumberOfCustomers())
-                || !isGreaterThan0Integer(bookingDto.getNumberOfCustomers());
-    }
-
-    private boolean isInvalidDateTimeOrder(String date, String timeToEnter, String timeToGoOut) {
-        return stringToDateTime(date + " " + timeToGoOut).getTime() < stringToDateTime(date + " " + timeToEnter).getTime();
     }
 
     private void setBookingInformation(String selectDate, Map<String, String> processInfo, Map<String, List<TableDto>> tableInformation) {
@@ -72,7 +45,7 @@ public class BookingService {
                 }
             }
         }
-        processInfo.put(String.format("Minimum number of tables needed on %s ", selectDate), String.format(" %s", maxTables));
+        processInfo.put(selectDate, String.valueOf(maxTables));
     }
 
     private boolean isOverlapping(TableDto table1, TableDto table2) {
