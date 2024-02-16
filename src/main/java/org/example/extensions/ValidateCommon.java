@@ -18,37 +18,37 @@ public class ValidateCommon {
         return null == value;
     }
 
-    public static boolean isNotGreaterThan0Integer(Integer value) {
-        return 0 >= value;
+    public static boolean isGreaterThan0Integer(Integer value) {
+        return 0 <= value;
     }
 
-    public static boolean isInValidDateFormat(String value) {
+    public static boolean isValidDate(String value) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/MM/yyyy");
         simpleDateFormat.setLenient(false);
         try {
             simpleDateFormat.parse(value);
-            return false;
-        } catch (ParseException e) {
             return true;
+        } catch (ParseException e) {
+            return false;
         }
     }
 
-    public static boolean isInValidTimeFormat(String value) {
+    public static boolean isValidTime(String value) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         simpleDateFormat.setLenient(false);
         try {
             simpleDateFormat.parse(value);
-            return false;
-        } catch (ParseException e) {
             return true;
+        } catch (ParseException e) {
+            return false;
         }
     }
 
-    public static boolean isInValidPhoneNumber(String phoneNumber) {
+    public static boolean isValidPhoneNumber(String phoneNumber) {
         String regex = "^\\+[0-9]+$";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(phoneNumber);
-        return !matcher.matches();
+        return matcher.matches();
     }
 
 }

@@ -1,7 +1,9 @@
 package org.example.service;
 
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.example.model.BookingDto;
 import org.example.model.TableDto;
 import static org.example.extensions.ConvertCommon.stringToDateTime;
@@ -11,98 +13,86 @@ public class BookingService {
 
     private static final double MAX_BOOKING_TABLE = 4.0;
 
-    public Map<String, String> booking(String targetDate, List<BookingDto> bookingDtoList) {
-        return processBooking(targetDate, bookingDtoList);
+    public Map<String, String> booking(String selectDate, List<BookingDto> bookingDtoList) {
+        if (isValidDate(selectDate)) {
+            return processBooking(selectDate, bookingDtoList);
+        }
+        return null;
     }
 
-    private Map<String, String> processBooking(String targetDate, List<BookingDto> bookingDtoList) {
+    private Map<String, String> processBooking(String selectDate, List<BookingDto> bookingDtoList) {
         Map<String, List<TableDto>> tableInformation = new HashMap<>();
-        Set<String> dateInformation = new HashSet<>();
         Map<String, String> processInfo = new HashMap<>();
         for (BookingDto bookingDto : bookingDtoList) {
-            if (isBookingDtoInvalid(bookingDto)) {
+            if (isInvalidBooking(bookingDto)) {
                 processInfo.put("invalid", "true");
                 return processInfo;
             }
-
-            dateInformation.add(bookingDto.getDate());
-            calculateCountTable(tableInformation, bookingDto);
+            calculateTableCount(tableInformation, bookingDto);
         }
-        setInformationBooking(targetDate, processInfo, dateInformation, tableInformation);
+        setBookingInformation(selectDate, processInfo, tableInformation);
+        processInfo.put("invalid", "false");
         return processInfo;
     }
 
-    private boolean isBookingDtoInvalid(BookingDto bookingDto) {
-        if (isEmptyString(bookingDto.getName())) {
-            return true;
-        }
-        if (isEmptyString(bookingDto.getContactPhoneNumber())
-                && isInValidPhoneNumber(bookingDto.getContactPhoneNumber())) {
-            return true;
-        }
-        if (isEmptyString(bookingDto.getDate())
-                && isInValidDateFormat(bookingDto.getDate())) {
-            return true;
-        }
-        if (isEmptyString(bookingDto.getTimeToEnter())
-                && isInValidTimeFormat(bookingDto.getTimeToEnter())) {
-            return true;
-        }
-        if (isEmptyString(bookingDto.getTimeToGoOut())
-                && isInValidTimeFormat(bookingDto.getTimeToGoOut())) {
-            return true;
-        }
-        if (stringToDateTime(bookingDto.getDate() + " " + bookingDto.getTimeToGoOut()).getTime()
-                < stringToDateTime(bookingDto.getDate() + " " + bookingDto.getTimeToEnter()).getTime()) {
-            return true;
-        }
-        return isEmptyInteger(bookingDto.getNumberOfCustomers())
-                && isNotGreaterThan0Integer(bookingDto.getNumberOfCustomers());
+    private boolean isInvalidBooking(BookingDto bookingDto) {
+        return isEmptyString(bookingDto.getName())
+                || isEmptyString(bookingDto.getContactPhoneNumber())
+                || !isValidPhoneNumber(bookingDto.getContactPhoneNumber())
+                || isEmptyString(bookingDto.getDate())
+                || !isValidDate(bookingDto.getDate())
+                || isEmptyString(bookingDto.getTimeToEnter())
+                || !isValidTime(bookingDto.getTimeToEnter())
+                || isEmptyString(bookingDto.getTimeToGoOut())
+                || !isValidTime(bookingDto.getTimeToGoOut())
+                || isInvalidDateTimeOrder(bookingDto.getDate(), bookingDto.getTimeToEnter(), bookingDto.getTimeToGoOut())
+                || isEmptyInteger(bookingDto.getNumberOfCustomers())
+                || !isGreaterThan0Integer(bookingDto.getNumberOfCustomers());
     }
 
-    private void setInformationBooking(
-            String targetDate,
-            Map<String, String> processInfo,
-            Set<String> dateInformation,
-            Map<String, List<TableDto>> tableInformation) {
-        for (String date : new ArrayList<>(dateInformation)) {
-            int max = 0;
-            if (targetDate.equals(date)) {
-                for (TableDto table1 : tableInformation.get(date)) {
+    private boolean isInvalidDateTimeOrder(String date, String timeToEnter, String timeToGoOut) {
+        return stringToDateTime(date + " " + timeToGoOut).getTime() < stringToDateTime(date + " " + timeToEnter).getTime();
+    }
 
-                    int totalTableAllOverlap = table1.getTotalTable();
-                    for (TableDto table2 : tableInformation.get(date)) {
-                        if (!table1.equals(table2) && isOverlapping(table1, table2)) {
-                            totalTableAllOverlap += table2.getTotalTable();
-                        }
-                    }
-                    if (totalTableAllOverlap > max) {
-                        max = totalTableAllOverlap;
+    private void setBookingInformation(String selectDate, Map<String, String> processInfo, Map<String, List<TableDto>> tableInformation) {
+        int maxTables = 0;
+        List<TableDto> tablesForDate = tableInformation.get(selectDate);
+        if (tablesForDate != null) {
+            for (TableDto table1 : tablesForDate) {
+                int totalTablesForOverlap = table1.getTotalTable();
+                for (TableDto table2 : tablesForDate) {
+                    if (!table1.equals(table2) && isOverlapping(table1, table2)) {
+                        totalTablesForOverlap += table2.getTotalTable();
                     }
                 }
-                processInfo.put(String.format("Minimum number of tables needed on %s ", date), String.format(" %s",max));
+                if (totalTablesForOverlap > maxTables) {
+                    maxTables = totalTablesForOverlap;
+                }
             }
         }
+        processInfo.put(String.format("Minimum number of tables needed on %s ", selectDate), String.format(" %s", maxTables));
     }
 
-    private void calculateCountTable(Map<String, List<TableDto>> tableInfo, BookingDto bookingDto) {
-        if (!tableInfo.containsKey(bookingDto.getDate())) {
-            tableInfo.put(bookingDto.getDate(), new ArrayList<>());
-        }
+    private boolean isOverlapping(TableDto table1, TableDto table2) {
+        return table1.getTimeToEnter().compareTo(table2.getTimeToGoOut()) < 0 &&
+                table1.getTimeToGoOut().compareTo(table2.getTimeToEnter()) > 0;
+    }
+
+    private void calculateTableCount(Map<String, List<TableDto>> tableInfo, BookingDto bookingDto) {
+        tableInfo.computeIfAbsent(bookingDto.getDate(), k -> new ArrayList<>())
+                .add(createTable(bookingDto));
+    }
+
+    private TableDto createTable(BookingDto bookingDto) {
         TableDto tableDto = new TableDto(
                 bookingDto.getName(),
                 bookingDto.getContactPhoneNumber(),
                 bookingDto.getDate(),
                 bookingDto.getTimeToEnter(),
                 bookingDto.getTimeToGoOut(),
-                bookingDto.getNumberOfCustomers());
+                bookingDto.getNumberOfCustomers()
+        );
         tableDto.setTotalTable((int) Math.ceil(bookingDto.getNumberOfCustomers() / MAX_BOOKING_TABLE));
-        tableInfo.get(bookingDto.getDate()).add(tableDto);
+        return tableDto;
     }
-
-    private boolean isOverlapping(TableDto r1, TableDto r2) {
-        return (r1.getTimeToEnter().compareTo(r2.getTimeToGoOut()) < 0) &&
-                (r1.getTimeToGoOut().compareTo(r2.getTimeToEnter()) > 0);
-    }
-
 }
